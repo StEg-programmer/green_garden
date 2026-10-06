@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'login_screen.dart';
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
-
 
   static const _sections = <({IconData icon, String title, String subtitle})>[
     (
@@ -126,6 +127,17 @@ class HomeScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: ListTile(
+                            onTap: index == 0
+                                ? () => Navigator.push<void>(
+                                    context,
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => const LoginScreen(),
+                                    ),
+                                  )
+                                : null,
+                            trailing: index == 0
+                                ? const Icon(Icons.chevron_right_rounded)
+                                : null,
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 10,
@@ -150,7 +162,6 @@ class HomeScreen extends StatelessWidget {
                               padding: const EdgeInsets.only(top: 4),
                               child: Text(section.subtitle),
                             ),
-
                           ),
                         ),
                       );
