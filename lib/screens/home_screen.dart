@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'login_screen.dart';
+import 'plants_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -127,15 +128,17 @@ class HomeScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: ListTile(
-                            onTap: index == 0
+                            onTap: index <= 1
                                 ? () => Navigator.push<void>(
                                     context,
                                     MaterialPageRoute<void>(
-                                      builder: (_) => const LoginScreen(),
+                                      builder: (_) => index == 0
+                                          ? const LoginScreen()
+                                          : const PlantsScreen(),
                                     ),
                                   )
                                 : null,
-                            trailing: index == 0
+                            trailing: index <= 1
                                 ? const Icon(Icons.chevron_right_rounded)
                                 : null,
                             contentPadding: const EdgeInsets.symmetric(
