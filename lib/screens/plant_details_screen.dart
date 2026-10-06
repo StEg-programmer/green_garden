@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/mock_data.dart';
 import '../widgets/plant_card.dart';
 import 'plant_form_screen.dart';
+import 'watering_log_screen.dart';
 
 class PlantDetailsScreen extends StatelessWidget {
   final Plant plant;
@@ -61,6 +62,23 @@ class PlantDetailsScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         PlantCard(plant: plant),
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          onPressed: () => Navigator.push<void>(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => WateringLogScreen(plant: plant),
+                            ),
+                          ),
+                          icon: const Icon(Icons.water_drop_outlined),
+                          label: const Text('Отметить полив'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 16,
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 16),
                         OutlinedButton.icon(
                           onPressed: () => Navigator.push<void>(
