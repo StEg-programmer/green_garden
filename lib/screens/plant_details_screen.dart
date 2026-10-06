@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/mock_data.dart';
 import '../widgets/plant_card.dart';
+import 'plant_form_screen.dart';
 
 class PlantDetailsScreen extends StatelessWidget {
   final Plant plant;
@@ -40,7 +41,6 @@ class PlantDetailsScreen extends StatelessWidget {
                           ),
                           child: Column(
                             children: [
-
                               Icon(
                                 Icons.eco_rounded,
                                 size: 112,
@@ -63,7 +63,12 @@ class PlantDetailsScreen extends StatelessWidget {
                         PlantCard(plant: plant),
                         const SizedBox(height: 16),
                         OutlinedButton.icon(
-                          onPressed: () {},
+                          onPressed: () => Navigator.push<void>(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => PlantFormScreen(plant: plant),
+                            ),
+                          ),
                           icon: const Icon(Icons.edit_outlined),
                           label: const Text('Редактировать растение'),
                           style: OutlinedButton.styleFrom(
@@ -201,7 +206,6 @@ class PlantDetailsScreen extends StatelessWidget {
     );
   }
 }
-
 
 class _SectionHeading extends StatelessWidget {
   final String title;

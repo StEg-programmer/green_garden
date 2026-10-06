@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/mock_data.dart';
 import '../widgets/plant_card.dart';
 import 'plant_details_screen.dart';
+import 'plant_form_screen.dart';
 
 class PlantsScreen extends StatelessWidget {
   const PlantsScreen({super.key});
@@ -22,7 +23,10 @@ class PlantsScreen extends StatelessWidget {
         foregroundColor: scheme.onSurface,
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {},
+        onPressed: () => Navigator.push<void>(
+          context,
+          MaterialPageRoute<void>(builder: (_) => const PlantFormScreen()),
+        ),
         icon: const Icon(Icons.add_rounded),
         label: const Text('Добавить растение'),
       ),
