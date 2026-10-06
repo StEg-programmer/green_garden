@@ -18,11 +18,6 @@ class HomeScreen extends StatelessWidget {
       subtitle: 'Коллекция, поиск и статус полива',
     ),
     (
-      icon: Icons.eco_outlined,
-      title: 'Карточка растения',
-      subtitle: 'Вид, фото и история ухода',
-    ),
-    (
       icon: Icons.add_circle_outline_rounded,
       title: 'Новое растение',
       subtitle: 'Название, вид и интервал полива',

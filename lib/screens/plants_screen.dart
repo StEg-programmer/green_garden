@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/mock_data.dart';
 import '../widgets/plant_card.dart';
+import 'plant_details_screen.dart';
 
 class PlantsScreen extends StatelessWidget {
   const PlantsScreen({super.key});
@@ -105,13 +106,21 @@ class PlantsScreen extends StatelessWidget {
                   ),
                 ),
                 SliverPadding(
-
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 104),
                   sliver: SliverList.builder(
                     itemCount: mockPlants.length,
                     itemBuilder: (context, index) => Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: PlantCard(plant: mockPlants[index]),
+                      child: PlantCard(
+                        plant: mockPlants[index],
+                        onTap: () => Navigator.push<void>(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                PlantDetailsScreen(plant: mockPlants[index]),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
