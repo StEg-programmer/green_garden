@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import 'plants_screen.dart';
 import 'watering_log_screen.dart';
+import 'reminders_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -119,19 +120,20 @@ class HomeScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: ListTile(
-                            onTap: index <= 2
+                            onTap: index <= 3
                                 ? () => Navigator.push<void>(
                                     context,
                                     MaterialPageRoute<void>(
                                       builder: (_) => switch (index) {
                                         0 => const LoginScreen(),
                                         1 => const PlantsScreen(),
-                                        _ => const WateringLogScreen(),
+                                        2 => const WateringLogScreen(),
+                                        _ => const RemindersScreen(),
                                       },
                                     ),
                                   )
                                 : null,
-                            trailing: index <= 2
+                            trailing: index <= 3
                                 ? const Icon(Icons.chevron_right_rounded)
                                 : null,
                             contentPadding: const EdgeInsets.symmetric(

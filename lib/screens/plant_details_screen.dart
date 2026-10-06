@@ -4,6 +4,7 @@ import '../data/mock_data.dart';
 import '../widgets/plant_card.dart';
 import 'plant_form_screen.dart';
 import 'watering_log_screen.dart';
+import 'reminders_screen.dart';
 
 class PlantDetailsScreen extends StatelessWidget {
   final Plant plant;
@@ -140,6 +141,21 @@ class PlantDetailsScreen extends StatelessWidget {
                         ),
                       );
                     },
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                  sliver: SliverToBoxAdapter(
+                    child: OutlinedButton.icon(
+                      onPressed: () => Navigator.push<void>(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => RemindersScreen(plant: plant),
+                        ),
+                      ),
+                      icon: const Icon(Icons.notifications_none_rounded),
+                      label: const Text('Напоминания этого растения'),
+                    ),
                   ),
                 ),
                 const _SectionHeading(
