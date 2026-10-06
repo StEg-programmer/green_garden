@@ -4,6 +4,7 @@ import 'login_screen.dart';
 import 'plants_screen.dart';
 import 'watering_log_screen.dart';
 import 'reminders_screen.dart';
+import 'profile_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -120,7 +121,7 @@ class HomeScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: ListTile(
-                            onTap: index <= 3
+                            onTap: index <= 4
                                 ? () => Navigator.push<void>(
                                     context,
                                     MaterialPageRoute<void>(
@@ -128,12 +129,13 @@ class HomeScreen extends StatelessWidget {
                                         0 => const LoginScreen(),
                                         1 => const PlantsScreen(),
                                         2 => const WateringLogScreen(),
-                                        _ => const RemindersScreen(),
+                                        3 => const RemindersScreen(),
+                                        _ => const ProfileScreen(),
                                       },
                                     ),
                                   )
                                 : null,
-                            trailing: index <= 3
+                            trailing: index <= 4
                                 ? const Icon(Icons.chevron_right_rounded)
                                 : null,
                             contentPadding: const EdgeInsets.symmetric(
