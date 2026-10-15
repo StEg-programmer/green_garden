@@ -17,9 +17,94 @@ Future<void> openLocation(WidgetTester tester, String location) async {
 void main() {
   testWidgets('Login opens plants without a return to login', (tester) async {
     await openLocation(tester, '/login');
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'anna@example.com',
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), 'garden123');
     final loginButton = find.widgetWithText(FilledButton, 'Войти');
     await tester.ensureVisible(loginButton);
     await tester.tap(loginButton);
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(AppBar, 'Мои растения'), findsOneWidget);
+    expect(router.canPop(), isFalse);
+    expect(find.text('Вход выполнен'), findsOneWidget);
+  });
+
+  testWidgets('Empty login fields show required errors and stay on login', (
+    tester,
+  ) async {
+    await openLocation(tester, '/login');
+    final button = find.widgetWithText(FilledButton, 'Войти');
+    await tester.ensureVisible(button);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    expect(find.text('Введите электронную почту'), findsOneWidget);
+    expect(
+      tester
+          .state<FormFieldState<String>>(find.byType(TextFormField).at(1))
+          .errorText,
+      'Введите пароль',
+    );
+    expect(find.widgetWithText(AppBar, 'Вход и регистрация'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+  });
+
+  testWidgets('Invalid email and short password cannot enter the app', (
+    tester,
+  ) async {
+    await openLocation(tester, '/login');
+    await tester.enterText(find.byType(TextFormField).at(0), 'anna@');
+    await tester.enterText(find.byType(TextFormField).at(1), '12345');
+    final button = find.widgetWithText(FilledButton, 'Войти');
+    await tester.ensureVisible(button);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Введите e-mail в формате name@example.com'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Пароль должен содержать минимум 6 символов'),
+      findsOneWidget,
+    );
+    expect(find.widgetWithText(AppBar, 'Вход и регистрация'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+  });
+
+  testWidgets('Any valid credentials enter without a mock user comparison', (
+    tester,
+  ) async {
+    await openLocation(tester, '/login');
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      '  another@example.org  ',
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), 'abcdef');
+    expect(
+      tester.widget<EditableText>(find.byType(EditableText).at(0)).keyboardType,
+      TextInputType.emailAddress,
+    );
+    expect(
+      tester.widget<EditableText>(find.byType(EditableText).at(1)).obscureText,
+      isTrue,
+    );
+    final button = find.widgetWithText(FilledButton, 'Войти');
+    await tester.ensureVisible(button);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(AppBar, 'Мои растения'), findsOneWidget);
+    expect(router.canPop(), isFalse);
+  });
+
+  testWidgets('Keyboard done uses the same login validation', (tester) async {
+    await openLocation(tester, '/login');
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'keyboard@example.com',
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), '123456');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
     expect(find.widgetWithText(AppBar, 'Мои растения'), findsOneWidget);
     expect(router.canPop(), isFalse);
