@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../data/mock_data.dart';
 import '../widgets/plant_card.dart';
-import 'plant_form_screen.dart';
-import 'watering_log_screen.dart';
-import 'reminders_screen.dart';
 
 class PlantDetailsScreen extends StatelessWidget {
-  final Plant plant;
+  final String id;
 
-  const PlantDetailsScreen({super.key, required this.plant});
+  const PlantDetailsScreen({super.key, required this.id});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final care = mockPlantCare[plant.id]!;
+    final plant = mockPlants.firstWhere((plant) => plant.id == id);
+    final care = mockPlantCare[id]!;
 
     return Scaffold(
       appBar: AppBar(
@@ -65,12 +64,7 @@ class PlantDetailsScreen extends StatelessWidget {
                         PlantCard(plant: plant),
                         const SizedBox(height: 16),
                         FilledButton.icon(
-                          onPressed: () => Navigator.push<void>(
-                            context,
-                            MaterialPageRoute<void>(
-                              builder: (_) => WateringLogScreen(plant: plant),
-                            ),
-                          ),
+                          onPressed: () => context.push('/plants/$id/watering'),
                           icon: const Icon(Icons.water_drop_outlined),
                           label: const Text('Отметить полив'),
                           style: FilledButton.styleFrom(
@@ -82,12 +76,7 @@ class PlantDetailsScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         OutlinedButton.icon(
-                          onPressed: () => Navigator.push<void>(
-                            context,
-                            MaterialPageRoute<void>(
-                              builder: (_) => PlantFormScreen(plant: plant),
-                            ),
-                          ),
+                          onPressed: () => context.push('/plants/$id/edit'),
                           icon: const Icon(Icons.edit_outlined),
                           label: const Text('Редактировать растение'),
                           style: OutlinedButton.styleFrom(
@@ -147,12 +136,7 @@ class PlantDetailsScreen extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
                   sliver: SliverToBoxAdapter(
                     child: OutlinedButton.icon(
-                      onPressed: () => Navigator.push<void>(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (_) => RemindersScreen(plant: plant),
-                        ),
-                      ),
+                      onPressed: () => context.push('/plants/$id/reminders'),
                       icon: const Icon(Icons.notifications_none_rounded),
                       label: const Text('Напоминания этого растения'),
                     ),

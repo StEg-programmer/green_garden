@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/section_menu.dart';
+
+import 'package:go_router/go_router.dart';
+
 import '../data/mock_data.dart';
 import '../widgets/plant_card.dart';
-import 'plant_details_screen.dart';
-import 'plant_form_screen.dart';
 
 class PlantsScreen extends StatelessWidget {
   const PlantsScreen({super.key});
@@ -21,12 +23,10 @@ class PlantsScreen extends StatelessWidget {
         title: const Text('Мои растения'),
         backgroundColor: scheme.surface,
         foregroundColor: scheme.onSurface,
+        actions: const [SectionMenu()],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.push<void>(
-          context,
-          MaterialPageRoute<void>(builder: (_) => const PlantFormScreen()),
-        ),
+        onPressed: () => context.push('/plants/new'),
         icon: const Icon(Icons.add_rounded),
         label: const Text('Добавить растение'),
       ),
@@ -117,13 +117,8 @@ class PlantsScreen extends StatelessWidget {
                       padding: const EdgeInsets.only(bottom: 12),
                       child: PlantCard(
                         plant: mockPlants[index],
-                        onTap: () => Navigator.push<void>(
-                          context,
-                          MaterialPageRoute<void>(
-                            builder: (_) =>
-                                PlantDetailsScreen(plant: mockPlants[index]),
-                          ),
-                        ),
+                        onTap: () =>
+                            context.push('/plants/${mockPlants[index].id}'),
                       ),
                     ),
                   ),

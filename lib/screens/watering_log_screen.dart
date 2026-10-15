@@ -1,23 +1,28 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/section_menu.dart';
+
 import '../data/mock_data.dart';
 import '../widgets/plant_card.dart';
 
 class WateringLogScreen extends StatelessWidget {
-  final Plant? plant;
+  final String? plantId;
 
-  const WateringLogScreen({super.key, this.plant});
+  const WateringLogScreen({super.key, this.plantId});
 
   @override
   Widget build(BuildContext context) {
+    final plant = plantId == null
+        ? null
+        : mockPlants.firstWhere((plant) => plant.id == plantId);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final selectedPlant = plant ?? mockPlants.first;
     final List<({Plant plant, WateringEntry entry})> records;
 
     if (plant != null) {
-      records = mockPlantCare[plant!.id]!.history
-          .map((entry) => (plant: plant!, entry: entry))
+      records = mockPlantCare[plant.id]!.history
+          .map((entry) => (plant: plant, entry: entry))
           .toList();
     } else {
       records = mockPlants
@@ -45,6 +50,7 @@ class WateringLogScreen extends StatelessWidget {
         title: const Text('Журнал полива'),
         backgroundColor: scheme.surface,
         foregroundColor: scheme.onSurface,
+        actions: const [SectionMenu()],
       ),
       body: SafeArea(
         child: Center(
@@ -101,7 +107,7 @@ class WateringLogScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 20),
                         if (plant != null)
-                          PlantCard(plant: plant!)
+                          PlantCard(plant: plant)
                         else
                           DropdownMenu<String>(
                             initialSelection: selectedPlant.id,

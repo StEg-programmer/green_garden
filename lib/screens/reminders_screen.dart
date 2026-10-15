@@ -1,21 +1,26 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/section_menu.dart';
+
 import '../data/mock_data.dart';
 
 class RemindersScreen extends StatelessWidget {
-  final Plant? plant;
+  final String? plantId;
 
-  const RemindersScreen({super.key, this.plant});
+  const RemindersScreen({super.key, this.plantId});
 
   @override
   Widget build(BuildContext context) {
+    final plant = plantId == null
+        ? null
+        : mockPlants.firstWhere((plant) => plant.id == plantId);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final List<({Plant plant, PlantReminder reminder})> records;
 
     if (plant != null) {
-      records = mockPlantCare[plant!.id]!.reminders
-          .map((reminder) => (plant: plant!, reminder: reminder))
+      records = mockPlantCare[plant.id]!.reminders
+          .map((reminder) => (plant: plant, reminder: reminder))
           .toList();
     } else {
       records = [
@@ -46,6 +51,7 @@ class RemindersScreen extends StatelessWidget {
         title: const Text('Напоминания'),
         backgroundColor: scheme.surface,
         foregroundColor: scheme.onSurface,
+        actions: const [SectionMenu()],
       ),
       body: SafeArea(
         child: Center(

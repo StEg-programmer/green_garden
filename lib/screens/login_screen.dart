@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -108,8 +109,7 @@ class LoginScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   FilledButton(
-
-                    onPressed: () {},
+                    onPressed: () => context.go('/plants'),
                     style: FilledButton.styleFrom(
                       minimumSize: const Size(0, 52),
                       shape: RoundedRectangleBorder(
@@ -120,7 +120,6 @@ class LoginScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   TextButton(
-
                     onPressed: () {},
                     child: const Text(
                       'Нет аккаунта? Зарегистрироваться',

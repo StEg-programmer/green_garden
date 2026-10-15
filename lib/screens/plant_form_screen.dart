@@ -4,12 +4,15 @@ import '../data/mock_data.dart';
 import '../widgets/plant_card.dart';
 
 class PlantFormScreen extends StatelessWidget {
-  final Plant? plant;
+  final String? plantId;
 
-  const PlantFormScreen({super.key, this.plant});
+  const PlantFormScreen({super.key, this.plantId});
 
   @override
   Widget build(BuildContext context) {
+    final plant = plantId == null
+        ? null
+        : mockPlants.firstWhere((plant) => plant.id == plantId);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final isEditing = plant != null;
@@ -82,7 +85,7 @@ class PlantFormScreen extends StatelessWidget {
                   if (plant != null) ...[
                     Text('Текущие данные', style: theme.textTheme.titleMedium),
                     const SizedBox(height: 12),
-                    PlantCard(plant: plant!),
+                    PlantCard(plant: plant),
                     const SizedBox(height: 24),
                   ],
                   Text(
