@@ -1,4 +1,3 @@
-
 enum WateringStatus { watered, due }
 
 class Plant {
@@ -105,7 +104,6 @@ class PlantReminder {
   });
 }
 
-
 const mockMonsteraWateringHistory = <WateringEntry>[
   WateringEntry(
     dateLabel: '6 октября',
@@ -180,7 +178,6 @@ class PlantCareData {
 
   const PlantCareData({required this.history, required this.reminders});
 }
-
 
 const mockPlantCare = <String, PlantCareData>{
   'monstera': PlantCareData(
@@ -614,3 +611,24 @@ const mockPlantCare = <String, PlantCareData>{
     ],
   ),
 };
+
+class UserProfile {
+  final String name;
+  final String email;
+  final String initials;
+  final String joinedLabel;
+
+  const UserProfile({
+    required this.name,
+    required this.email,
+    required this.initials,
+    required this.joinedLabel,
+  });
+}
+
+const mockUser = UserProfile(
+  name: 'Егор Ставилов',
+  email: 'egor.stavilov@example.com',
+  initials: 'ES',
+  joinedLabel: 'Сентябрь 2026',
+);
