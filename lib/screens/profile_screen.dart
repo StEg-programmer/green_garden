@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../widgets/section_menu.dart';
-
 import '../data/mock_data.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -27,7 +25,6 @@ class ProfileScreen extends StatelessWidget {
         title: const Text('Мой профиль'),
         backgroundColor: scheme.surface,
         foregroundColor: scheme.onSurface,
-        actions: const [SectionMenu()],
       ),
       body: SafeArea(
         child: Center(

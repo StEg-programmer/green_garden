@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../widgets/section_menu.dart';
-
 import 'package:go_router/go_router.dart';
 
 import '../data/mock_data.dart';
@@ -23,7 +21,6 @@ class PlantsScreen extends StatelessWidget {
         title: const Text('Мои растения'),
         backgroundColor: scheme.surface,
         foregroundColor: scheme.onSurface,
-        actions: const [SectionMenu()],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/plants/new'),

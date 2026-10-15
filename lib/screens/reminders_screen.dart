@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../widgets/section_menu.dart';
-
 import '../data/mock_data.dart';
 
 class RemindersScreen extends StatelessWidget {
@@ -51,7 +49,6 @@ class RemindersScreen extends StatelessWidget {
         title: const Text('Напоминания'),
         backgroundColor: scheme.surface,
         foregroundColor: scheme.onSurface,
-        actions: const [SectionMenu()],
       ),
       body: SafeArea(
         child: Center(

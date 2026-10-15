@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../widgets/section_menu.dart';
-
 import '../data/mock_data.dart';
 import '../widgets/plant_card.dart';
 
@@ -50,7 +48,6 @@ class WateringLogScreen extends StatelessWidget {
         title: const Text('Журнал полива'),
         backgroundColor: scheme.surface,
         foregroundColor: scheme.onSurface,
-        actions: const [SectionMenu()],
       ),
       body: SafeArea(
         child: Center(

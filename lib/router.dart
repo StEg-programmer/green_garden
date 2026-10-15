@@ -9,6 +9,7 @@ import 'screens/plants_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/reminders_screen.dart';
 import 'screens/watering_log_screen.dart';
+import 'widgets/app_shell.dart';
 
 final router = GoRouter(
   initialLocation: '/login',
@@ -22,49 +23,72 @@ final router = GoRouter(
   errorBuilder: (context, state) => const _RouteErrorScreen(),
   routes: [
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
-    GoRoute(
-      path: '/plants',
-      builder: (context, state) => const PlantsScreen(),
-      routes: [
-        GoRoute(
-          path: 'new',
-          builder: (context, state) => const PlantFormScreen(),
-        ),
-        GoRoute(
-          path: ':id',
-          builder: (context, state) =>
-              PlantDetailsScreen(id: state.pathParameters['id']!),
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) =>
+          AppShell(navigationShell: navigationShell),
+      branches: [
+        StatefulShellBranch(
           routes: [
             GoRoute(
-              path: 'edit',
-              builder: (context, state) =>
-                  PlantFormScreen(plantId: state.pathParameters['id']!),
+              path: '/plants',
+              builder: (context, state) => const PlantsScreen(),
+              routes: [
+                GoRoute(
+                  path: 'new',
+                  builder: (context, state) => const PlantFormScreen(),
+                ),
+                GoRoute(
+                  path: ':id',
+                  builder: (context, state) =>
+                      PlantDetailsScreen(id: state.pathParameters['id']!),
+                  routes: [
+                    GoRoute(
+                      path: 'edit',
+                      builder: (context, state) =>
+                          PlantFormScreen(plantId: state.pathParameters['id']!),
+                    ),
+                    GoRoute(
+                      path: 'watering',
+                      builder: (context, state) => WateringLogScreen(
+                        plantId: state.pathParameters['id']!,
+                      ),
+                    ),
+                    GoRoute(
+                      path: 'reminders',
+                      builder: (context, state) =>
+                          RemindersScreen(plantId: state.pathParameters['id']!),
+                    ),
+                  ],
+                ),
+              ],
             ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
             GoRoute(
-              path: 'watering',
-              builder: (context, state) =>
-                  WateringLogScreen(plantId: state.pathParameters['id']!),
+              path: '/watering-log',
+              builder: (context, state) => const WateringLogScreen(),
             ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
             GoRoute(
-              path: 'reminders',
-              builder: (context, state) =>
-                  RemindersScreen(plantId: state.pathParameters['id']!),
+              path: '/reminders',
+              builder: (context, state) => const RemindersScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/profile',
+              builder: (context, state) => const ProfileScreen(),
             ),
           ],
         ),
       ],
-    ),
-    GoRoute(
-      path: '/watering-log',
-      builder: (context, state) => const WateringLogScreen(),
-    ),
-    GoRoute(
-      path: '/reminders',
-      builder: (context, state) => const RemindersScreen(),
-    ),
-    GoRoute(
-      path: '/profile',
-      builder: (context, state) => const ProfileScreen(),
     ),
   ],
 );
