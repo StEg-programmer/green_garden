@@ -1,29 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../data/mock_data.dart';
+import '../data/date_helpers.dart';
+import '../data/plant.dart';
+import '../models/garden_model.dart';
 import 'status_badge.dart';
 
 class PlantCard extends StatelessWidget {
   final Plant plant;
   final VoidCallback? onTap;
-
   const PlantCard({super.key, required this.plant, this.onTap});
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final radius = BorderRadius.circular(24);
-
+    final model = context.watch<GardenModel>();
+    final last = model.lastWateredAt(plant.id);
     return Card(
       margin: EdgeInsets.zero,
       elevation: 0,
       color: scheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(borderRadius: radius),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        borderRadius: radius,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -56,13 +56,15 @@ class PlantCard extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          plant.species,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
+                        if (plant.species.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            plant.species,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
@@ -75,21 +77,16 @@ class PlantCard extends StatelessWidget {
                 runSpacing: 8,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  StatusBadge(status: plant.wateringStatus),
-                  Text(
-                    'Интервал: ${plant.wateringIntervalDays} дн.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
+                  StatusBadge(status: model.statusFor(plant)),
+                  Text('Интервал: ${plant.wateringIntervalDays} дн.'),
                 ],
               ),
               const SizedBox(height: 12),
               Text(
-                'Последний полив: ${plant.lastWateredLabel}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
+                last == null
+                    ? 'Ещё не поливали'
+                    : 'Последний полив: ${formatDate(last)}',
+                style: theme.textTheme.bodySmall,
               ),
             ],
           ),

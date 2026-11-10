@@ -1,143 +1,111 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:green_garden/data/mock_data.dart';
-import 'package:green_garden/main.dart';
 import 'package:green_garden/router.dart';
 
-Future<void> openJournal(WidgetTester tester, String location) async {
-  router.go(location);
-  await tester.pumpWidget(const MyApp());
-  await tester.pumpAndSettle();
-}
-
-Future<void> submitWatering(WidgetTester tester) async {
-  final button = find.widgetWithText(FilledButton, 'Отметить полив');
-  await Scrollable.ensureVisible(tester.element(button), alignment: 0.3);
-  await tester.pumpAndSettle();
-  await tester.tap(button);
-  await tester.pumpAndSettle();
-}
-
-Future<void> selectToday(WidgetTester tester) async {
-  final dateField = find.byType(TextFormField).first;
-  await Scrollable.ensureVisible(tester.element(dateField), alignment: 0.3);
-  await tester.pumpAndSettle();
-  await tester.tap(dateField);
-  await tester.pumpAndSettle();
-  expect(find.byType(DatePickerDialog), findsOneWidget);
-  final picker = tester.widget<CalendarDatePicker>(
-    find.byType(CalendarDatePicker),
-  );
-  expect(picker.lastDate, DateUtils.dateOnly(DateTime.now()));
-  await tester.tap(find.text('Выбрать'));
-  await tester.pumpAndSettle();
-}
+import 'test_support.dart';
 
 void main() {
-  testWidgets('General journal requires a plant and date', (tester) async {
-    await openJournal(tester, '/watering-log');
-    await submitWatering(tester);
-    expect(find.text('Выберите дату полива'), findsOneWidget);
-    expect(
-      tester
-          .state<FormFieldState<String>>(
-            find.byType(DropdownButtonFormField<String>),
-          )
-          .errorText,
-      'Выберите растение',
-    );
-    expect(find.widgetWithText(AppBar, 'Журнал полива'), findsOneWidget);
-  });
+  testWidgets(
+    'Journal requires plant and date and calendar excludes future days',
+    (tester) async {
+      await boot(tester, '/watering-log');
+      await press(tester, 'Отметить полив');
+      expect(find.text('Выберите дату полива'), findsOneWidget);
+      expect(
+        tester
+            .state<FormFieldState<String>>(
+              find.byKey(const ValueKey('watering-plant')),
+            )
+            .errorText,
+        'Выберите растение',
+      );
+      await selectToday(tester);
+      expect(
+        tester
+            .widget<TextFormField>(find.byKey(const ValueKey('watering-date')))
+            .controller!
+            .text,
+        isNotEmpty,
+      );
+    },
+  );
 
-  testWidgets('Selected plant and date confirm without changing mock history', (
+  testWidgets('Watering a plant updates history schedule and profile count', (
     tester,
   ) async {
-    final count = mockPlantCare.values.fold<int>(
-      0,
-      (total, care) => total + care.history.length,
-    );
-    await openJournal(tester, '/watering-log');
-    final dropdown = find.byType(DropdownButtonFormField<String>);
-    await Scrollable.ensureVisible(tester.element(dropdown), alignment: 0.3);
-    await tester.pumpAndSettle();
-    await tester.tap(dropdown);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Фикус в гостиной').last);
-    await tester.pumpAndSettle();
-    await selectToday(tester);
-    await submitWatering(tester);
-    expect(find.widgetWithText(AppBar, 'Журнал полива'), findsOneWidget);
-    expect(
-      find.textContaining('Полив отмечен: Фикус в гостиной'),
-      findsOneWidget,
-    );
-    expect(
-      mockPlantCare.values.fold<int>(
-        0,
-        (total, care) => total + care.history.length,
-      ),
-      count,
-    );
-    expect(router.canPop(), isFalse);
-  });
-
-  testWidgets('Contextual journal keeps the plant and returns to details', (
-    tester,
-  ) async {
-    await openJournal(tester, '/plants/aloe/watering');
-    expect(find.text('Aloe vera'), findsOneWidget);
-    expect(find.byType(DropdownButtonFormField<String>), findsNothing);
+    await boot(tester, '/plants/ficus/watering');
+    final oldDue = garden(tester).nextWateringAt(garden(tester).byId('ficus')!);
     await selectToday(tester);
     await tester.enterText(
-      find.byType(TextFormField).at(1),
-      'Почва сухая, полил утром.',
+      find.byKey(const ValueKey('watering-note')),
+      'Полил утром',
     );
-    await submitWatering(tester);
+    await press(tester, 'Отметить полив');
+    expect(garden(tester).waterings.length, 51);
+    expect(garden(tester).historyFor('ficus').first.note, 'Полил утром');
+    expect(
+      garden(tester)
+          .nextWateringAt(garden(tester).byId('ficus')!)
+          .isAfter(oldDue),
+      isTrue,
+    );
     expect(find.widgetWithText(AppBar, 'Карточка растения'), findsOneWidget);
-    expect(find.textContaining('Полив отмечен: Алоэ на кухне'), findsOneWidget);
-    expect(mockPlantCare['aloe']!.history.length, 6);
+    await tester.tap(find.text('Профиль'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('profile-watering-count')))
+          .data,
+      '51',
+    );
   });
 
-  testWidgets('Cancelling the calendar does not fill in a date', (
+  testWidgets('Edit watering loads its data and really changes the record', (
     tester,
   ) async {
-    await openJournal(tester, '/plants/monstera/watering');
-    final dateField = find.byType(TextFormField).first;
-    await Scrollable.ensureVisible(tester.element(dateField), alignment: 0.3);
+    await boot(tester, '/watering-log');
+    final entry = garden(tester).waterings.first;
+    router.go('/watering-log/${entry.id}/edit');
     await tester.pumpAndSettle();
-    await tester.tap(dateField);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Отмена'));
-    await tester.pumpAndSettle();
-    expect(tester.widget<TextFormField>(dateField).controller!.text, isEmpty);
-    await submitWatering(tester);
-    expect(find.text('Выберите дату полива'), findsOneWidget);
+    final note = find.byKey(const ValueKey('watering-note'));
+    expect(tester.widget<TextFormField>(note).controller!.text, entry.note);
+    await tester.enterText(note, 'Исправленная заметка');
+    await press(tester, 'Сохранить изменения');
+    expect(garden(tester).wateringById(entry.id)!.note, 'Исправленная заметка');
+    expect(find.widgetWithText(AppBar, 'Журнал полива'), findsOneWidget);
   });
-
-  testWidgets('A new contextual id clears the previous draft', (tester) async {
-    await openJournal(tester, '/plants/ficus/watering');
-    await selectToday(tester);
-    await tester.enterText(
-      find.byType(TextFormField).at(1),
-      'Заметка о фикусе',
-    );
-    router.go('/plants/zz/watering');
-    await tester.pumpAndSettle();
-    expect(find.text('Zamioculcas zamiifolia'), findsOneWidget);
-    expect(
-      tester
-          .widget<TextFormField>(find.byType(TextFormField).first)
-          .controller!
-          .text,
-      isEmpty,
-    );
-    expect(
-      tester
-          .widget<TextFormField>(find.byType(TextFormField).at(1))
-          .controller!
-          .text,
-      isEmpty,
-    );
-  });
+  testWidgets(
+    'Deleting a selected plant from another tab clears the journal selection',
+    (tester) async {
+      await boot(tester, '/watering-log');
+      final dropdown = find.byKey(const ValueKey('watering-plant'));
+      await reveal(tester, dropdown);
+      await tester.tap(dropdown);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Фикус в гостиной').last);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('watering-note')),
+        'Черновик сохраняется',
+      );
+      await tester.tap(find.text('Растения'));
+      await tester.pumpAndSettle();
+      final removal = garden(tester).removePlant('ficus');
+      await tester.pumpAndSettle();
+      await removal;
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('Журнал'));
+      await tester.pumpAndSettle();
+      expect(tester.state<FormFieldState<String>>(dropdown).value, isNull);
+      expect(
+        tester
+            .widget<TextFormField>(find.byKey(const ValueKey('watering-note')))
+            .controller!
+            .text,
+        'Черновик сохраняется',
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

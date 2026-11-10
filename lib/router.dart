@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'data/mock_data.dart';
 import 'screens/login_screen.dart';
 import 'screens/plant_details_screen.dart';
 import 'screens/plant_form_screen.dart';
@@ -13,13 +12,6 @@ import 'widgets/app_shell.dart';
 
 final router = GoRouter(
   initialLocation: '/login',
-  redirect: (context, state) {
-    final id = state.pathParameters['id'];
-    if (id != null && !mockPlants.any((plant) => plant.id == id)) {
-      return '/plants';
-    }
-    return null;
-  },
   errorBuilder: (context, state) => const _RouteErrorScreen(),
   routes: [
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
@@ -69,6 +61,14 @@ final router = GoRouter(
             GoRoute(
               path: '/watering-log',
               builder: (context, state) => const WateringLogScreen(),
+              routes: [
+                GoRoute(
+                  path: ':entryId/edit',
+                  builder: (context, state) => WateringLogScreen(
+                    entryId: state.pathParameters['entryId']!,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
