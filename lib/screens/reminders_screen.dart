@@ -1,256 +1,128 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
-import '../data/mock_data.dart';
+import '../data/date_helpers.dart';
+import '../models/garden_model.dart';
+import '../widgets/garden_widgets.dart';
 
 class RemindersScreen extends StatelessWidget {
-  final Plant? plant;
+  final String? plantId;
+  const RemindersScreen({super.key, this.plantId});
 
-  const RemindersScreen({super.key, this.plant});
+  Future<void> _cancel(BuildContext context, String id) async {
+    final confirmed = await confirmAction(
+      context,
+      title: 'Отменить выполненный полив?',
+      message: 'Запись будет удалена из журнала, а напоминание пересчитано.',
+      confirmLabel: 'Отменить полив',
+    );
+    if (confirmed != true || !context.mounted) return;
+    final error = await context.read<GardenModel>().removeWatering(id);
+    if (context.mounted) showMessage(context, error ?? 'Полив отменён');
+  }
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final List<({Plant plant, PlantReminder reminder})> records;
-
-    if (plant != null) {
-      records = mockPlantCare[plant!.id]!.reminders
-          .map((reminder) => (plant: plant!, reminder: reminder))
-          .toList();
-    } else {
-      records = [
-        for (final item in mockPlants)
-          (
-            plant: item,
-            reminder: mockPlantCare[item.id]!.reminders.firstWhere(
-              (reminder) => !reminder.isCompleted,
-            ),
-          ),
-        for (final item in mockPlants)
-          (
-            plant: item,
-            reminder: mockPlantCare[item.id]!.reminders.firstWhere(
-              (reminder) => reminder.isCompleted,
-            ),
-          ),
-      ];
-    }
-
-    final completedCount = records
-        .where((record) => record.reminder.isCompleted)
-        .length;
-    final pendingCount = records.length - completedCount;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Напоминания'),
-        backgroundColor: scheme.surface,
-        foregroundColor: scheme.onSurface,
-      ),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: CustomScrollView(
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                  sliver: SliverToBoxAdapter(
-                    child: Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: scheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(28),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            Icons.notifications_none_rounded,
-                            size: 48,
-                            color: scheme.onPrimaryContainer,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Забота по расписанию',
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                              color: scheme.onPrimaryContainer,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            plant?.name ?? 'Пусть каждый полив будет вовремя.',
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: scheme.onPrimaryContainer,
-                              height: 1.4,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Wrap(
-                            spacing: 12,
-                            runSpacing: 8,
-                            children: [
-                              Chip(
-                                label: Text('Не выполнено: $pendingCount'),
-                                backgroundColor: scheme.surface,
-                                side: BorderSide.none,
-                              ),
-                              Chip(
-                                label: Text('Выполнено: $completedCount'),
-                                backgroundColor: scheme.surface,
-                                side: BorderSide.none,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+  Widget build(BuildContext context) => GardenPage(
+    title: 'Напоминания',
+    child: GardenDataView(
+      builder: (model) {
+        if (plantId != null && model.byId(plantId!) == null) {
+          return missingPlant(context);
+        }
+        final reminders = model.reminders
+            .where((item) => plantId == null || item.plantId == plantId)
+            .toList();
+        final pending = reminders.where((item) => !item.isCompleted).length;
+        return CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.all(20),
+              sliver: SliverToBoxAdapter(
+                child: GardenHeader(
+                  icon: Icons.notifications_none_rounded,
+                  title: 'Забота по расписанию',
+                  subtitle:
+                      '${plantId == null ? 'Ваш сад' : model.byId(plantId!)!.name}\nВ плане: $pending · Выполнено: ${reminders.length - pending}',
                 ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                  sliver: SliverToBoxAdapter(
-                    child: Text(
-                      'План поливов',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                  sliver: SliverList.builder(
-                    itemCount: records.length,
-                    itemBuilder: (context, index) {
-                      final record = records[index];
-                      final isCompleted = record.reminder.isCompleted;
-                      final statusForeground = isCompleted
-                          ? scheme.onPrimaryContainer
-                          : scheme.onTertiaryContainer;
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Card(
-                          margin: EdgeInsets.zero,
-                          elevation: 0,
-                          color: scheme.surfaceContainerLow,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Icon(
-                                      isCompleted
-                                          ? Icons.check_circle_outline_rounded
-                                          : Icons.notifications_active_outlined,
-                                      color: scheme.primary,
-                                      size: 28,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            record.plant.name,
-                                            style: theme.textTheme.titleMedium
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            record.reminder.title,
-                                            style: theme.textTheme.bodyMedium
-                                                ?.copyWith(
-                                                  color:
-                                                      scheme.onSurfaceVariant,
-                                                ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.calendar_today_outlined,
-                                      size: 18,
-                                      color: scheme.onSurfaceVariant,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        record.reminder.dateLabel,
-                                        style: theme.textTheme.bodyLarge,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Wrap(
-                                  children: [
-                                    Chip(
-                                      avatar: Icon(
-                                        isCompleted
-                                            ? Icons.check_rounded
-                                            : Icons.schedule_rounded,
-                                        size: 18,
-                                        color: statusForeground,
-                                      ),
-                                      label: Text(
-                                        isCompleted
-                                            ? 'Выполнено'
-                                            : 'Не выполнено',
-                                      ),
-                                      labelStyle: theme.textTheme.labelLarge
-                                          ?.copyWith(color: statusForeground),
-                                      backgroundColor: isCompleted
-                                          ? scheme.primaryContainer
-                                          : scheme.tertiaryContainer,
-                                      side: BorderSide.none,
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                OutlinedButton.icon(
-                                  onPressed: () {},
-                                  icon: Icon(
-                                    isCompleted
-                                        ? Icons.undo_rounded
-                                        : Icons.check_rounded,
-                                    size: 18,
-                                  ),
-                                  label: Text(
-                                    isCompleted
-                                        ? 'Вернуть в план'
-                                        : 'Отметить выполненным',
-                                  ),
-                                ),
-                              ],
+              ),
+            ),
+            if (reminders.isEmpty)
+              const SliverToBoxAdapter(
+                child: GardenEmptyView(message: 'Напоминаний пока нет'),
+              ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+              sliver: SliverList.builder(
+                itemCount: reminders.length,
+                itemBuilder: (context, index) {
+                  final reminder = reminders[index];
+                  final plant = model.byId(reminder.plantId)!;
+                  final overdue =
+                      !reminder.isCompleted &&
+                      reminder.dueAt.isBefore(DateTime.now());
+                  return Padding(
+                    key: ValueKey(reminder.id),
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              plant.name,
+                              style: Theme.of(context).textTheme.titleMedium,
                             ),
-                          ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Полить растение · ${formatDateTime(reminder.dueAt)}',
+                            ),
+                            const SizedBox(height: 8),
+                            Chip(
+                              label: Text(
+                                reminder.isCompleted
+                                    ? 'Выполнено'
+                                    : overdue
+                                    ? 'Пора поливать'
+                                    : 'Запланировано',
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            OutlinedButton.icon(
+                              onPressed: model.isSaving
+                                  ? null
+                                  : () {
+                                      if (reminder.isCompleted) {
+                                        _cancel(context, reminder.id);
+                                      } else {
+                                        context.push(
+                                          '/plants/${plant.id}/watering',
+                                        );
+                                      }
+                                    },
+                              icon: Icon(
+                                reminder.isCompleted
+                                    ? Icons.undo_rounded
+                                    : Icons.water_drop_outlined,
+                              ),
+                              label: Text(
+                                reminder.isCompleted
+                                    ? 'Отменить полив'
+                                    : 'Отметить полив',
+                              ),
+                            ),
+                          ],
                         ),
-                      );
-                    },
-                  ),
-                ),
-              ],
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
+          ],
+        );
+      },
+    ),
+  );
 }

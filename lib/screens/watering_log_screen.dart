@@ -1,264 +1,282 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
-import '../data/mock_data.dart';
-import '../widgets/plant_card.dart';
+import '../data/date_helpers.dart';
+import '../data/watering_entry.dart';
+import '../models/garden_model.dart';
+import '../widgets/garden_widgets.dart';
+import '../widgets/watering_card.dart';
 
 class WateringLogScreen extends StatelessWidget {
-  final Plant? plant;
+  final String? plantId;
+  final String? entryId;
+  const WateringLogScreen({super.key, this.plantId, this.entryId});
 
-  const WateringLogScreen({super.key, this.plant});
+  Future<void> _remove(BuildContext context, String id) async {
+    final confirmed = await confirmAction(
+      context,
+      title: 'Отменить полив?',
+      message: 'Запись исчезнет из журнала. Срок следующего полива будет пересчитан.',
+      confirmLabel: 'Отменить полив',
+    );
+    if (confirmed != true || !context.mounted) return;
+    final error = await context.read<GardenModel>().removeWatering(id);
+    if (context.mounted) showMessage(context, error ?? 'Полив отменён');
+  }
+
+  @override
+  Widget build(BuildContext context) => GardenPage(
+    title: entryId == null ? 'Журнал полива' : 'Редактировать полив',
+    child: GardenDataView(
+      builder: (model) {
+        if (plantId != null && model.byId(plantId!) == null) {
+          return missingPlant(context);
+        }
+        final entry = entryId == null ? null : model.wateringById(entryId!);
+        if (entryId != null && entry == null) {
+          return const GardenEmptyView(message: 'Запись полива не существует');
+        }
+        if (model.plants.isEmpty) {
+          return const GardenEmptyView(
+            message: 'Сначала добавьте растение в свой сад.',
+          );
+        }
+        final history = plantId == null
+            ? model.waterings
+            : model.historyFor(plantId!);
+        return CustomScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.all(24),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    GardenHeader(
+                      icon: Icons.water_drop_outlined,
+                      title: 'Капля заботы',
+                      subtitle: 'Отмечайте поливы и сохраняйте наблюдения.',
+                    ),
+                    const SizedBox(height: 24),
+                    _WateringEditor(
+                      key: ValueKey(entryId ?? plantId ?? 'new'),
+                      plantId: plantId,
+                      entry: entry,
+                    ),
+                    if (entryId == null) ...[
+                      const SizedBox(height: 28),
+                      Text(
+                        'История поливов',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ],
+                    if (entryId == null && history.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text('Поливов пока нет'),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            if (entryId == null)
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                sliver: SliverList.builder(
+                  itemCount: history.length,
+                  itemBuilder: (context, index) {
+                    final entry = history[index];
+                    final plant = model.byId(entry.plantId);
+                    if (plant == null) return const SizedBox.shrink();
+                    return Padding(
+                      key: ValueKey(entry.id),
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: WateringCard(
+                        entry: entry,
+                        plant: plant,
+                        onEdit: model.isSaving
+                            ? null
+                            : () => context.push(
+                                '/watering-log/${entry.id}/edit',
+                              ),
+                        onDelete: model.isSaving
+                            ? null
+                            : () => _remove(context, entry.id),
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        );
+      },
+    ),
+  );
+}
+
+class _WateringEditor extends StatefulWidget {
+  final String? plantId;
+  final WateringEntry? entry;
+  const _WateringEditor({super.key, this.plantId, this.entry});
+  @override
+  State<_WateringEditor> createState() => _WateringEditorState();
+}
+
+class _WateringEditorState extends State<_WateringEditor> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _date;
+  late final TextEditingController _note;
+  DateTime? _selectedDate;
+  String? _selectedPlant;
+  @override
+  void initState() {
+    super.initState();
+    _selectedPlant = widget.entry?.plantId ?? widget.plantId;
+    _selectedDate = widget.entry?.wateredAt;
+    _date = TextEditingController(
+      text: _selectedDate == null ? '' : formatDate(_selectedDate!),
+    );
+    _note = TextEditingController(text: widget.entry?.note ?? '');
+  }
+
+  @override
+  void dispose() {
+    _date.dispose();
+    _note.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    FocusScope.of(context).unfocus();
+    final today = dateOnly(DateTime.now());
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? today,
+      firstDate: DateTime(1900),
+      lastDate: today,
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
+      helpText: 'Дата полива',
+      cancelText: 'Отмена',
+      confirmText: 'Выбрать',
+    );
+    if (!mounted || date == null) return;
+    setState(() {
+      _selectedDate = date;
+      _date.text = formatDate(date);
+    });
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    final model = context.read<GardenModel>();
+    final draft = WateringEntry(
+      id: widget.entry?.id ?? '',
+      plantId: _selectedPlant!,
+      wateredAt: _selectedDate!,
+      note: _note.text.trim(),
+    );
+    final error = widget.entry == null
+        ? await model.addWatering(draft)
+        : await model.updateWatering(draft);
+    if (!mounted) return;
+    showMessage(context, error ?? 'Полив сохранён');
+    if (error == null) {
+      FocusScope.of(context).unfocus();
+      if (widget.entry != null || widget.plantId != null) {
+        context.pop();
+      } else {
+        _note.clear();
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final selectedPlant = plant ?? mockPlants.first;
-    final List<({Plant plant, WateringEntry entry})> records;
-
-    if (plant != null) {
-      records = mockPlantCare[plant!.id]!.history
-          .map((entry) => (plant: plant!, entry: entry))
-          .toList();
-    } else {
-      records = mockPlants
-          .map(
-            (item) =>
-                (plant: item, entry: mockPlantCare[item.id]!.history.first),
-          )
-          .toList();
-    }
-
-    InputDecoration decoration(String label, String hint, IconData icon) {
-      return InputDecoration(
-        labelText: label,
-        hintText: hint,
-        floatingLabelBehavior: FloatingLabelBehavior.always,
-        prefixIcon: Icon(icon),
-        filled: true,
-        fillColor: scheme.surfaceContainerLow,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Журнал полива'),
-        backgroundColor: scheme.surface,
-        foregroundColor: scheme.onSurface,
-      ),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: CustomScrollView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
-                  sliver: SliverToBoxAdapter(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            color: scheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(28),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(
-                                Icons.water_drop_outlined,
-                                size: 48,
-                                color: scheme.onPrimaryContainer,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Капля заботы',
-                                style: theme.textTheme.headlineSmall?.copyWith(
-                                  color: scheme.onPrimaryContainer,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Отмечайте поливы и сохраняйте наблюдения о своих растениях.',
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  color: scheme.onPrimaryContainer,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Отметить полив',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        if (plant != null)
-                          PlantCard(plant: plant!)
-                        else
-                          DropdownMenu<String>(
-                            initialSelection: selectedPlant.id,
-                            expandedInsets: EdgeInsets.zero,
-                            requestFocusOnTap: false,
-                            enableSearch: false,
-                            enableFilter: false,
-                            label: const Text('Растение'),
-                            leadingIcon: const Icon(Icons.eco_outlined),
-                            inputDecorationTheme: InputDecorationTheme(
-                              filled: true,
-                              fillColor: scheme.surfaceContainerLow,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            dropdownMenuEntries: mockPlants
-                                .map(
-                                  (item) => DropdownMenuEntry(
-                                    value: item.id,
-                                    label: item.name,
-                                  ),
-                                )
-                                .toList(),
-                          ),
-                        const SizedBox(height: 20),
-                        TextField(
-                          textInputAction: TextInputAction.next,
-                          decoration: decoration(
-                            'Дата полива',
-                            'Например, 7 октября',
-                            Icons.calendar_today_outlined,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        TextField(
-                          minLines: 3,
-                          maxLines: 6,
-                          keyboardType: TextInputType.multiline,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: decoration(
-                            'Заметка',
-                            'Как выглядит растение? Была ли почва сухой?',
-                            Icons.notes_rounded,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        FilledButton.icon(
-                          onPressed: () {},
-                          icon: const Icon(Icons.check_rounded),
-                          label: const Text('Отметить полив'),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 16,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+    final model = context.watch<GardenModel>();
+    return Form(
+      key: _formKey,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            widget.entry == null ? 'Отметить полив' : 'Редактировать запись',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 20),
+          DropdownButtonFormField<String>(
+            key: const ValueKey('watering-plant'),
+            initialValue: model.byId(_selectedPlant ?? '')?.id,
+            isExpanded: true,
+            decoration: fieldDecoration(
+              context,
+              'Растение',
+              'Выберите растение',
+              Icons.eco_outlined,
+            ),
+            validator: (value) => value == null || model.byId(value) == null
+                ? 'Выберите растение'
+                : null,
+            onChanged: model.isSaving
+                ? null
+                : (value) => setState(() => _selectedPlant = value),
+            items: model.plants
+                .map(
+                  (plant) => DropdownMenuItem(
+                    value: plant.id,
+                    child: Text(plant.name, overflow: TextOverflow.ellipsis),
                   ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                  sliver: SliverToBoxAdapter(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          plant != null
-                              ? 'История поливов'
-                              : 'Последние поливы',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          plant != null
-                              ? selectedPlant.name
-                              : 'Последняя запись для каждого растения',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                  sliver: SliverList.builder(
-                    itemCount: records.length,
-                    itemBuilder: (context, index) {
-                      final record = records[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Card(
-                          margin: EdgeInsets.zero,
-                          elevation: 0,
-                          color: scheme.surfaceContainerLow,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  record.plant.name,
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.water_drop_outlined,
-                                      size: 18,
-                                      color: scheme.primary,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        record.entry.dateLabel,
-                                        style: theme.textTheme.bodyMedium
-                                            ?.copyWith(
-                                              color: scheme.onSurfaceVariant,
-                                            ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  record.entry.note,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
+                )
+                .toList(),
+          ),
+          const SizedBox(height: 20),
+          TextFormField(
+            key: const ValueKey('watering-date'),
+            controller: _date,
+            readOnly: true,
+            onTap: _pickDate,
+            decoration: fieldDecoration(
+              context,
+              'Дата полива',
+              'Выберите дату в календаре',
+              Icons.calendar_today_outlined,
+            ),
+            validator: (_) => _selectedDate == null
+                ? 'Выберите дату полива'
+                : dateOnly(_selectedDate!).isAfter(dateOnly(DateTime.now()))
+                ? 'Дата полива не может быть в будущем'
+                : null,
+          ),
+          const SizedBox(height: 20),
+          TextFormField(
+            key: const ValueKey('watering-note'),
+            controller: _note,
+            minLines: 3,
+            maxLines: 6,
+            decoration: fieldDecoration(
+              context,
+              'Заметка',
+              'Ваши наблюдения о растении',
+              Icons.notes_rounded,
             ),
           ),
-        ),
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            onPressed: model.isSaving ? null : _save,
+            icon: model.isSaving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.check_rounded),
+            label: Text(
+              widget.entry == null ? 'Отметить полив' : 'Сохранить изменения',
+            ),
+          ),
+        ],
       ),
     );
   }

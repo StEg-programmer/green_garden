@@ -1,30 +1,110 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:green_garden/data/mock_failure_controller.dart';
 import 'package:green_garden/main.dart';
+import 'package:green_garden/router.dart';
+import 'package:green_garden/screens/plants_screen.dart';
+
+import 'test_support.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets(
+    'Login validates then uses go without keeping login below the shell',
+    (tester) async {
+      await boot(tester, '/login');
+      await press(tester, 'Войти');
+      expect(find.text('Введите электронную почту'), findsOneWidget);
+      await tester.enterText(
+        find.byType(TextFormField).at(0),
+        'user@example.com',
+      );
+      await tester.enterText(find.byType(TextFormField).at(1), '123456');
+      await press(tester, 'Войти');
+      expect(find.widgetWithText(AppBar, 'Мои растения'), findsOneWidget);
+      expect(router.canPop(), isFalse);
+    },
+  );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+  testWidgets('Data loading is visible before repository response', (
+    tester,
+  ) async {
+    router.go('/plants');
+    await tester.pumpWidget(
+      createApp(
+        failureController: MockFailureController(
+          latency: const Duration(seconds: 1),
+        ),
+      ),
+    );
     await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsWidgets);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('8 растений'), findsOneWidget);
   });
+
+  testWidgets('Tabs restore a detail and a scrolled plant list', (
+    tester,
+  ) async {
+    await boot(tester, '/plants/ficus');
+    await tester.tap(find.text('Профиль'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Растения'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ficus elastica'), findsWidgets);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    final scrollable = find
+        .descendant(
+          of: find.byType(PlantsScreen),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    await tester.drag(scrollable, const Offset(0, -350));
+    await tester.pumpAndSettle();
+    final offset = tester.state<ScrollableState>(scrollable).position.pixels;
+    await tester.tap(find.text('Профиль'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Растения'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.state<ScrollableState>(scrollable).position.pixels,
+      closeTo(offset, 0.1),
+    );
+  });
+
+  testWidgets('Profile switch produces loading error and working retry', (
+    tester,
+  ) async {
+    await boot(tester, '/profile');
+    await tester.tap(find.byType(SwitchListTile));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Растения'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Обновить'));
+    await tester.pumpAndSettle();
+    expect(find.text('Сервер не отвечает — повторите попытку'), findsOneWidget);
+    expect(find.text('Повторить'), findsOneWidget);
+    await tester.tap(find.text('Профиль'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(SwitchListTile));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Растения'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Повторить'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('8 растений'), findsOneWidget);
+  });
+
+  testWidgets(
+    'Missing ids show a message after loading rather than a spinner',
+    (tester) async {
+      await boot(tester, '/plants/missing');
+      expect(find.text('Растение не существует'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      await press(tester, 'К моим растениям');
+      expect(find.widgetWithText(AppBar, 'Мои растения'), findsOneWidget);
+    },
+  );
 }
